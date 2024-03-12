@@ -3,7 +3,7 @@ import shutil
 import soundfile as sf
 import numpy as np
 import librosa
-
+import tqdm
 #根据src中的vtt，切割对应的wav，并保存到dst中。dst中，每个wav一个文件夹，同时有一个all.wav文件，包含所有的wav
 def parse_milliseconds(timestamp:str):
     """ 将时间戳转换为毫秒
@@ -71,7 +71,10 @@ def split_wav(start_mili:int, end_mili:int,  input_audio):
     if input_audio.ndim == 1:
         output_audio = input_audio[start_mili:end_mili]
     else:
+        #只保留能量较大的声道
         output_audio = input_audio[:, start_mili:end_mili]
+        output_audio_energy = np.sum(output_audio**2, axis=1)
+        output_audio = output_audio[np.argmax(output_audio_energy)]
     return output_audio
 
 def save_wav(output_audio, sr, output_filename:str):
@@ -83,8 +86,9 @@ def save_wav(output_audio, sr, output_filename:str):
     sf.write(output_filename, output_audio, sr)
 
 def main(src:str, dst:str):
-    wavs = os.listdir(src)
-    for wav in wavs:
+    wavs = [i for i in os.listdir(src) if i.endswith('.wav')]
+    pbar = tqdm.tqdm(wavs)
+    for wav in pbar:
         # 读取音频
         input_audio, sr = librosa.load(os.path.join(src, wav), sr=None, mono=False)
         # 读取VTT文件
